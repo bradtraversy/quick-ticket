@@ -12,6 +12,9 @@
   "dependencies": {
     "@prisma/client": "^6.6.0",
     "@sentry/nextjs": "^9.13.0",
+    "bcryptjs": "^3.0.2",
+    "cookie": "^1.0.2",
+    "jose": "^6.0.10",
     "next": "15.3.1",
     "prisma": "^6.6.0",
     "react": "^19.0.0",
