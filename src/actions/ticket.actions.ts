@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { logEvent } from '@/utils/sentry';
 import { getCurrentUser } from '@/lib/current-user';
 
+// Create New Ticket
 export async function createTicket(
   prevState: { success: boolean; message: string },
   formData: FormData
@@ -75,6 +76,7 @@ export async function createTicket(
   }
 }
 
+// Get all user tickets
 export async function getTickets() {
   try {
     const user = await getCurrentUser();
@@ -104,6 +106,7 @@ export async function getTickets() {
   }
 }
 
+// Get single ticket details
 export async function getTicketById(id: string) {
   try {
     const ticket = await prisma.ticket.findUnique({
@@ -125,4 +128,53 @@ export async function getTicketById(id: string) {
     );
     return null;
   }
+}
+
+// Close Ticket
+export async function closeTicket(
+  prevState: { success: boolean; message: string },
+  formData: FormData
+): Promise<{ success: boolean; message: string }> {
+  const ticketId = Number(formData.get('ticketId'));
+
+  if (!ticketId) {
+    logEvent('Missing ticket ID', 'ticket', {}, 'warning');
+    return { success: false, message: 'Ticket ID is Required' };
+  }
+
+  const user = await getCurrentUser();
+
+  if (!user) {
+    logEvent('Missing user ID', 'ticket', {}, 'warning');
+
+    return { success: false, message: 'Unauthorized' };
+  }
+
+  const ticket = await prisma.ticket.findUnique({
+    where: { id: ticketId },
+  });
+
+  if (!ticket || ticket.userId !== user.id) {
+    logEvent(
+      'Unauthorized ticket close attempt',
+      'ticket',
+      { ticketId, userId: user.id },
+      'warning'
+    );
+
+    return {
+      success: false,
+      message: 'You are not authorized to close this ticket',
+    };
+  }
+
+  await prisma.ticket.update({
+    where: { id: ticketId },
+    data: { status: 'Closed' },
+  });
+
+  revalidatePath('/tickets');
+  revalidatePath(`/tickets/${ticketId}`);
+
+  return { success: true, message: 'Ticket closed successfully' };
 }
